@@ -99,7 +99,7 @@ The program launches the `koboldcpp.exe` engine itself (just place it in the `AI
 
 ### Which model to choose? (Recommended format: `Q4_K_M` or `Q5_K_M`)
 1. **Lightweight (7B - 8B)** *(Requires: ~6-8 GB VRAM)*
-   * 🏆 **Qwen 2.5 (7B):** [Download Qwen2.5-7B-Instruct-GGUF]([qwen2.5-7b-instruct-q4_k_m-00001-of-00002](https://huggingface.co/paultimothymooney/Qwen2.5-7B-Instruct-Q4_K_M-GGUF/tree/main))
+   * 🏆 **Qwen 2.5 (7B):** [Download Qwen2.5-7B-Instruct-GGUF](qwen2.5-7b-instruct-q4_k_m-00001-of-00002](https://huggingface.co/paultimothymooney/Qwen2.5-7B-Instruct-Q4_K_M-GGUF/tree/main)
    * 🥈 **Llama 3.1 (8B):** [Download Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF)
 2. **Medium (14B)** *(Requires: ~10-12 GB VRAM)*
    * 🏆 **Qwen 2.5 (14B):** [Download Qwen2.5-14B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF)
@@ -227,7 +227,7 @@ MineAI Translator — это мощный, умный и безопасный и
 ### Какую модель выбрать? (Рекомендуемый формат Q4_K_M или Q5_K_M)
 
 1. Легкие (7B - 8B) (Требования: ~6-8 ГБ VRAM)
-   * 🏆 Qwen 2.5 (7B): [Скачать Qwen2.5-7B-Instruct-GGUF]([qwen2.5-7b-instruct-q4_k_m-00001-of-00002](https://huggingface.co/paultimothymooney/Qwen2.5-7B-Instruct-Q4_K_M-GGUF/tree/main))
+   * 🏆 Qwen 2.5 (7B): [Скачать Qwen2.5-7B-Instruct-GGUF](qwen2.5-7b-instruct-q4_k_m-00001-of-00002](https://huggingface.co/paultimothymooney/Qwen2.5-7B-Instruct-Q4_K_M-GGUF/tree/main)
    * 🥈 Llama 3.1 (8B): [Скачать Llama-3.1-8B-Instruct-GGUF](https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF)
 2. Средние (14B) (Требования: ~10-12 ГБ VRAM)
    * 🏆 Qwen 2.5 (14B): [Скачать Qwen2.5-14B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF)
