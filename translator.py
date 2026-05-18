@@ -105,6 +105,21 @@ FORMAT_PATTERN = re.compile(
 
 KEYS_TO_TRANSLATE = {"name", "title", "text", "description", "subtitle", "label", "hover_text", "link_text"}
 IGNORE_TERMS = ["RF", "FE", "EU", "J", "mB", "mB/t", "RF/t", "FE/t", "AE", "kW", "kRF", "mB/tick", "ticks", "GUI", "UI", "HUD", "JEI", "REI", "EMI", "API", "JSON", "NBT", "FPS", "TPS", "HP", "XP", "MP", "XP/t", "XYZ", "RGB", "ID", "II", "III", "IV", "VI", "VII", "VIII", "IX", "XI", "XII"]
+def get_roman_numerals(limit=100):
+    val = [100, 90, 50, 40, 10, 9, 5, 4, 1]
+    syb = ["C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
+    romans = []
+    for num in range(1, limit + 1):
+        roman_num = ''
+        i = 0
+        while num > 0:
+            for _ in range(num // val[i]):
+                roman_num += syb[i]
+                num -= val[i]
+            i += 1
+        romans.append(roman_num)
+    return romans
+    
 IGNORE_TERMS.sort(key=len, reverse=True)
 IGNORE_PATTERN = re.compile(r'(?<![a-zA-Z])(' + '|'.join([re.escape(t) for t in IGNORE_TERMS]) + r')(?![a-zA-Z])')
 
@@ -363,7 +378,11 @@ class TranslatorApp(ctk.CTk):
         ctk.CTkLabel(self.frame_left, text="ЦЕЛЕВОЙ ЯЗЫК", font=("", 14, "bold")).pack(pady=(15, 5))
         self.var_lang = ctk.StringVar(value="Русский")
         ctk.CTkOptionMenu(self.frame_left, variable=self.var_lang, values=list(LANGUAGES.keys())).pack(fill="x", padx=20)
-
+        
+        ctk.CTkLabel(self.frame_left, text="ВЕРСИЯ ИГРЫ", font=("", 14, "bold")).pack(pady=(15, 5))
+        self.var_mc_ver = ctk.StringVar(value="1.20.1")
+        ctk.CTkOptionMenu(self.frame_left, variable=self.var_mc_ver, values=["1.12.2", "1.16.5", "1.18.2", "1.19.2", "1.19.4", "1.20.1", "1.20.4", "1.20.6", "1.21.1"]).pack(fill="x", padx=20)
+        
         ctk.CTkLabel(self.frame_left, text="МЕТОД СОХРАНЕНИЯ", font=("", 14, "bold")).pack(pady=(15, 5))
         self.var_output = ctk.StringVar(value="resourcepack")
         
@@ -941,6 +960,25 @@ class TranslatorApp(ctk.CTk):
         if eng == "ai" and not self.setup_and_start_ai():
             self.lock_ui(False)
             return
+        
+        if eng == "ai" and not self.setup_and_start_ai():
+            self.lock_ui(False)
+            return
+
+        # === НОВЫЙ БЛОК: ОПРЕДЕЛЕНИЕ ФОРМАТА ПО ВЕРСИИ ===
+        FORMATS = {
+            "1.12.2": {"rp": 3, "dp": 1},
+            "1.16.5": {"rp": 6, "dp": 6},
+            "1.18.2": {"rp": 8, "dp": 9},
+            "1.19.2": {"rp": 9, "dp": 10},
+            "1.19.4": {"rp": 13, "dp": 12},
+            "1.20.1": {"rp": 15, "dp": 15},
+            "1.20.4": {"rp": 22, "dp": 26},
+            "1.20.6": {"rp": 32, "dp": 41},
+            "1.21.1": {"rp": 34, "dp": 48}
+        }
+        # Если версии вдруг нет в списке, берем параметры от 1.21.1 как самые свежие
+        fmt = FORMATS.get(self.var_mc_ver.get(), {"rp": 34, "dp": 48})
 
         rp_zip = None
         rp_h = None
@@ -970,7 +1008,8 @@ class TranslatorApp(ctk.CTk):
                     break
                     
             with zipfile.ZipFile(rp_zip, 'w', compression=zipfile.ZIP_DEFLATED) as z:
-                z.writestr("pack.mcmeta", json.dumps({"pack": {"pack_format": 15, "description": f"{r_nm} - MineAI"}}, indent=2))
+                # ЗДЕСЬ ЗАМЕНИЛИ 15 НА fmt["rp"]
+                z.writestr("pack.mcmeta", json.dumps({"pack": {"pack_format": fmt["rp"], "description": f"{r_nm} - MineAI"}}, indent=2))
             rp_h = zipfile.ZipFile(rp_zip, 'a', compression=zipfile.ZIP_DEFLATED)
             self.log_colored(f"📦 Создан ресурспак: {rp_zip}", "cyan")
             
@@ -985,7 +1024,8 @@ class TranslatorApp(ctk.CTk):
                     pass
                     
             with zipfile.ZipFile(dp_zip, 'w', compression=zipfile.ZIP_DEFLATED) as z:
-                z.writestr("pack.mcmeta", json.dumps({"pack": {"pack_format": 15, "description": f"{dp_nm} - MineAI"}}, indent=2))
+                # ЗДЕСЬ ЗАМЕНИЛИ 15 НА fmt["dp"]
+                z.writestr("pack.mcmeta", json.dumps({"pack": {"pack_format": fmt["dp"], "description": f"{dp_nm} - MineAI"}}, indent=2))
             dp_h = zipfile.ZipFile(dp_zip, 'a', compression=zipfile.ZIP_DEFLATED)
             self.log_colored(f"📂 Создан Датапак: {dp_zip}", "magenta")
 
