@@ -13,7 +13,7 @@ You can translate your modpack from English into any of the following languages:
 ## 🖥️ User-Friendly Interface
 The program features a modern Graphical User Interface (GUI). You don't need to write console commands — simply select your modpack folder, check the desired boxes, choose your target language, and click "Start".
 
-![Main Window]([https://github.com/Thedrezik/MineAI-Modpack-Translator/blob/main/interface.png?raw=true](https://github.com/Thedrezik/MineAI-Modpack-Translator/blob/main/interface.png?raw=true))
+![Main Window](https://github.com/Thedrezik/MineAI-Modpack-Translator/blob/main/interface.png?raw=true)
 
 ---
 
