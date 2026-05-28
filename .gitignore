@@ -1,0 +1,53 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Virtualenv / окружения ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- PyInstaller / build ---
+build/
+dist/
+*.spec.bak
+*.manifest
+
+# --- IDE / редакторы ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- MineAI рантайм-файлы (не должны коммититься) ---
+settings.ini
+cache.json
+ai_cache.json
+*.log
+
+# AI-модели и исполняемые файлы локального движка
+AI/
+koboldcpp.exe
+*.gguf
+
+# Сгенерированные ресурс-/датапаки
+*Pack*.zip
+*pack*.zip
+MineAI_Pack*
+
+# Временные/отладочные скрипты, которые иногда появляются рядом с проектом
+_smoke*.py
+_test_*.py
+_normalize_*.py

@@ -7,6 +7,29 @@ import requests
 from mineai.engines.base import EngineCallbacks, EngineItem, TranslationEngine
 from mineai.text_processing import polish_translation, unmask_translation
 
+GLOSSARY_ADDITIONS_KEY = "__glossary_additions__"
+
+
+def _glossary_block(glossary: dict[str, str] | None) -> str:
+    if not glossary:
+        return ""
+    pairs = json.dumps(glossary, ensure_ascii=False)
+    return (
+        "\nГЛОССАРИЙ (обязательные соответствия EN→RU, используй их дословно): "
+        f"{pairs}.\n"
+    )
+
+
+def _glossary_instruction(allow_additions: bool) -> str:
+    if not allow_additions:
+        return ""
+    return (
+        " Если встречаешь НОВЫЕ устойчивые термины (имена предметов, блоков, мобов, "
+        "названия машин/мультиблоков), которые стоит зафиксировать на будущее — добавь "
+        f'их в дополнительный ключ "{GLOSSARY_ADDITIONS_KEY}" того же JSON-объекта в '
+        'формате {"English term": "русский перевод"}. Не дублируй термины из глоссария.'
+    )
+
 
 def build_translation_prompt(
     payload: dict[str, str],
@@ -14,18 +37,26 @@ def build_translation_prompt(
     *,
     mode: str,
     context: str,
+    glossary: dict[str, str] | None = None,
+    allow_glossary_additions: bool = False,
 ) -> str:
     blob = json.dumps(payload, ensure_ascii=False)
+    glossary_text = _glossary_block(glossary)
+    additions = _glossary_instruction(allow_glossary_additions)
     if mode == "context" and context:
         return (
             f"Ты локализатор Minecraft. Переведи строки мода/квеста «{context}» на {lang_name}. "
-            f"Сохраняй игровой стиль и лор. Не переводи JSON-ключи. Теги [#0#] не менять. "
-            f"Верни ТОЛЬКО валидный JSON с теми же ключами. Данные: {blob}"
+            f"Сохраняй игровой стиль и лор. Не переводи JSON-ключи. Теги [#0#] не менять."
+            f"{glossary_text}"
+            f" Верни ТОЛЬКО валидный JSON с теми же ключами.{additions}"
+            f" Данные: {blob}"
         )
     return (
         f"Translate JSON string values from English to {lang_name}. "
-        f"Do not translate keys. Preserve [#0#] tags exactly. "
-        f"Return ONLY valid JSON with the same keys. Data: {blob}"
+        f"Do not translate keys. Preserve [#0#] tags exactly."
+        f"{glossary_text}"
+        f" Return ONLY valid JSON with the same keys.{additions}"
+        f" Data: {blob}"
     )
 
 
@@ -35,6 +66,22 @@ def parse_llm_json_response(content: str) -> dict:
     if not isinstance(data, dict):
         raise TypeError("LLM response is not a JSON object")
     return data
+
+
+def extract_glossary_additions(payload: dict) -> dict[str, str]:
+    """Достать и вычистить ``__glossary_additions__`` из ответа модели."""
+    raw = payload.pop(GLOSSARY_ADDITIONS_KEY, None)
+    if not isinstance(raw, dict):
+        return {}
+    cleaned: dict[str, str] = {}
+    for k, v in raw.items():
+        if not isinstance(k, str) or not isinstance(v, (str, int, float)):
+            continue
+        src = k.strip()
+        dst = str(v).strip()
+        if src and dst and src.lower() != dst.lower():
+            cleaned[src] = dst
+    return cleaned
 
 
 class BatchLlmEngine(TranslationEngine):
@@ -47,11 +94,13 @@ class BatchLlmEngine(TranslationEngine):
         context: str = "",
         call_api: Callable[[str, int], str | None],
         label: str = "ИИ",
+        glossary: "GlossaryAdapter | None" = None,
     ) -> None:
         self.mode = mode
         self.context = context
         self._call_api = call_api
         self.label = label
+        self.glossary = glossary
         self.batch_size = 40 if mode == "context" else 20
         self.max_tokens = 4096 if mode == "context" else 2048
 
@@ -86,11 +135,15 @@ class BatchLlmEngine(TranslationEngine):
         callbacks: EngineCallbacks,
     ) -> bool:
         payload = {k: items[k].masked for k in chunk_keys}
+        glossary_terms = self._chunk_glossary([items[k].original for k in chunk_keys])
+        allow_additions = bool(self.glossary and self.glossary.allow_additions)
         prompt = build_translation_prompt(
             payload,
             target_lang["name"],
             mode=self.mode,
             context=self.context,
+            glossary=glossary_terms,
+            allow_glossary_additions=allow_additions,
         )
         callbacks.on_status(f"⏳ {self.label}: пакет {len(chunk_keys)} строк...")
         try:
@@ -98,6 +151,14 @@ class BatchLlmEngine(TranslationEngine):
             if not content:
                 return False
             translated = parse_llm_json_response(content)
+            additions = extract_glossary_additions(translated)
+            if additions and self.glossary:
+                added = self.glossary.stage(additions)
+                if added:
+                    callbacks.on_log(
+                        f"📖 Глоссарий: ИИ предложил {added} новых термина(ов)",
+                        "magenta",
+                    )
             for key in chunk_keys:
                 if key in translated:
                     text = unmask_translation(str(translated[key]), items[key].mapping)
@@ -111,3 +172,8 @@ class BatchLlmEngine(TranslationEngine):
         except requests.RequestException as exc:
             callbacks.on_log(f"❌ {self.label}: сеть — {exc}", "red")
             return False
+
+    def _chunk_glossary(self, originals: list[str]) -> dict[str, str]:
+        if not self.glossary:
+            return {}
+        return self.glossary.relevant_for(originals)

@@ -1,12 +1,41 @@
 from mineai.cache import TranslationCache
 from mineai.config import ConfigManager
 from mineai.engines.base import EngineCallbacks, EngineItem, TranslationEngine
+from mineai.engines.custom import CustomLlmEngine
 from mineai.engines.deepl import DeepLEngine
 from mineai.engines.google import GoogleEngine
 from mineai.constants import DEFAULT_OPENROUTER_MODEL
 from mineai.engines.kobold import KoboldEngine
 from mineai.engines.openrouter import OpenRouterEngine
+from mineai.glossary import Glossary
 from mineai.text_processing import apply_smart_glue, mask_protected_fragments
+
+
+class GlossaryAdapter:
+    """Тонкая обёртка над ``Glossary`` для движков ИИ."""
+
+    def __init__(
+        self,
+        glossary: Glossary | None,
+        *,
+        enabled: bool,
+        allow_additions: bool,
+        max_terms: int,
+    ) -> None:
+        self._glossary = glossary
+        self.enabled = enabled and glossary is not None
+        self.allow_additions = self.enabled and allow_additions
+        self.max_terms = max(1, max_terms)
+
+    def relevant_for(self, texts) -> dict[str, str]:
+        if not self.enabled or not self._glossary:
+            return {}
+        return self._glossary.relevant_for(texts, limit=self.max_terms)
+
+    def stage(self, additions: dict[str, str]) -> int:
+        if not self.allow_additions or not self._glossary:
+            return 0
+        return self._glossary.stage_additions(additions)
 
 
 class TranslationService:
@@ -21,6 +50,7 @@ class TranslationService:
         google_mode: str = "single",
         ai_mode: str = "safe",
         ai_provider: str = "local",
+        glossary_adapter: GlossaryAdapter | None = None,
     ) -> None:
         self.engine_name = engine_name
         self.cache = cache
@@ -28,6 +58,7 @@ class TranslationService:
         self.google_mode = google_mode
         self.ai_mode = ai_mode
         self.ai_provider = ai_provider
+        self.glossary = glossary_adapter
 
     def _build_engine(self, context: str = "") -> TranslationEngine:
         if self.engine_name == "google":
@@ -45,8 +76,21 @@ class TranslationService:
                 context=context,
                 site_url=self.config.get("OPENROUTER", "site_url"),
                 app_name=self.config.get("OPENROUTER", "app_name"),
+                glossary=self.glossary,
             )
-        return KoboldEngine(mode=self.ai_mode, context=context)
+        if self.ai_provider == "custom":
+            return CustomLlmEngine(
+                base_url=self.config.get("CUSTOM_AI", "base_url"),
+                api_key=self.config.get("CUSTOM_AI", "api_key"),
+                model=self.config.get("CUSTOM_AI", "model"),
+                provider_name=self.config.get("CUSTOM_AI", "name"),
+                extra_headers=self.config.get("CUSTOM_AI", "extra_headers"),
+                auth_scheme=self.config.get("CUSTOM_AI", "auth_scheme"),
+                mode=self.ai_mode,
+                context=context,
+                glossary=self.glossary,
+            )
+        return KoboldEngine(mode=self.ai_mode, context=context, glossary=self.glossary)
 
     def translate_dict(
         self,

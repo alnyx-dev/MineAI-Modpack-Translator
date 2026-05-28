@@ -116,6 +116,9 @@ class TranslatorApp(ctk.CTk):
         ctk.CTkRadioButton(
             self.frame_ai, text="OpenRouter (облако)", variable=self.var_ai_provider, value="openrouter"
         ).pack(anchor="w", pady=1)
+        ctk.CTkRadioButton(
+            self.frame_ai, text="Custom (OpenAI-совместимый)", variable=self.var_ai_provider, value="custom"
+        ).pack(anchor="w", pady=1)
         ctk.CTkRadioButton(self.frame_ai, text="Безопасный (20 строк)", variable=self.var_ai_mode, value="safe").pack(
             anchor="w", pady=(6, 2)
         )

@@ -15,6 +15,7 @@ class OpenRouterEngine(BatchLlmEngine):
         context: str = "",
         site_url: str = "",
         app_name: str = "MineAI Translator",
+        glossary=None,
     ) -> None:
         self.api_key = api_key.strip()
         self.model = model.strip()
@@ -25,6 +26,7 @@ class OpenRouterEngine(BatchLlmEngine):
             context=context,
             call_api=self._request,
             label="OpenRouter",
+            glossary=glossary,
         )
 
     def _headers(self) -> dict[str, str]:

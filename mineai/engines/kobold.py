@@ -5,12 +5,19 @@ from mineai.engines.llm_common import BatchLlmEngine
 
 
 class KoboldEngine(BatchLlmEngine):
-    def __init__(self, mode: str = "safe", context: str = "") -> None:
+    def __init__(
+        self,
+        mode: str = "safe",
+        context: str = "",
+        *,
+        glossary=None,
+    ) -> None:
         super().__init__(
             mode=mode,
             context=context,
             call_api=self._request,
             label="KoboldCPP",
+            glossary=glossary,
         )
 
     def _request(self, prompt: str, max_tokens: int) -> str | None:

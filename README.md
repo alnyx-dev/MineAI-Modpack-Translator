@@ -36,6 +36,8 @@ You don't need to install Python or mess with code! You can download the ready-t
 * 📖 **Custom Dictionary (`dictionary.json`):** The program automatically generates a dictionary file. If the translator stubbornly translates "Raw Copper" incorrectly, just add a rule to the dictionary, and the script will automatically replace it throughout the entire modpack!
 * 🧠 **Local AI Support:** Integration with KoboldCPP for translating text while preserving game lore and context.
 * ☁️ **Cloud AI via OpenRouter:** Connect elite neural networks (like Qwen, Claude, or GPT) in one click without using your video card.
+* 🔌 **Any OpenAI-compatible Provider:** Plug in literally any chat-completions endpoint — `localhost:8080`, OpenCode Zen, Ollama (`/v1`), LM Studio, llama.cpp server, vLLM, Together, Groq — by entering Base URL, API key, model and (optional) extra headers.
+* 📖 **Glossary-aware AI:** The AI reads `glossary.md` (markdown tables) and is forced to use the canonical translations. Optionally it can suggest new terms, which are auto-appended to a managed `## Авто-добавлено ИИ` section between markers, so the human-curated part of the file stays untouched.
 * ⚡ **High Speed:** When using Google Translate, the program sends requests in batches using multi-threading, translating thousands of lines in minutes.
 * 📦 **Safe Packaging:** The program generates a ready-to-use `Resource Pack` or `Data Pack` without damaging your original `.jar` mod files.
 
@@ -97,6 +99,24 @@ To avoid translating the same lines twice, the program uses a **dual independent
 
 ### Option 2: Local AI (KoboldCPP)
 The program launches the `koboldcpp.exe` engine itself (just place it in the `AI` folder). You only need to download a language model in **`.gguf`** format.
+
+### Option 3: Custom OpenAI-compatible Provider
+For literally anything else with a `/v1/chat/completions` endpoint:
+1. Open **Settings → Custom AI**.
+2. Fill in:
+   * **Имя провайдера** — any label (shown in the log).
+   * **Base URL** — e.g. `http://localhost:8080/v1`, `https://api.opencode.zen/v1`, `http://127.0.0.1:11434/v1` for Ollama, etc. The path `/chat/completions` is appended automatically.
+   * **API key** — leave blank for local servers that don't require auth.
+   * **ID модели** — e.g. `qwen2.5:14b`, `local-model`, whatever your endpoint expects.
+   * **Auth scheme** — `bearer` (default), `x-api-key`, `api-key` or `none`.
+   * **Доп. заголовки** — optional JSON, e.g. `{"X-Provider": "opencode"}`.
+3. In the main window choose **AI Engine → Custom (OpenAI-compatible)**.
+
+### Glossary (`glossary.md`)
+When AI translation is on and the glossary is enabled (Settings → Глоссарий), MineAI:
+* Loads all markdown tables of the form `| Original | Перевод | Примечание |` from `glossary.md`.
+* Per batch, finds terms that appear in the source strings and injects them into the prompt as **mandatory** translations.
+* If "Разрешить ИИ дописывать новые термины" is on, the model may return a `__glossary_additions__` JSON object, and those new pairs are written into the managed **`## Авто-добавлено ИИ`** section (between `<!-- AUTO_GLOSSARY_START -->` and `<!-- AUTO_GLOSSARY_END -->` markers) at the end of the file. Your hand-written sections are never touched.
 
 #### GPU Offloading
 * **0 (CPU Only):** Runs on your processor (Slow).
@@ -169,6 +189,15 @@ The compiled standalone app will appear in the `dist/` folder as `MineAI_Transla
 
 ### Вариант 2: Локальный ИИ (KoboldCPP)
 Программа сама запускает движок `koboldcpp.exe` (просто положите его в папку `AI`). Вам нужно лишь скачать языковую модель формата **`.gguf`**.
+
+### Вариант 3: Custom (OpenAI-совместимый провайдер)
+Для любых других сервисов и серверов: localhost (`llama.cpp server`, `LM Studio`, `Ollama /v1`, `vLLM`), OpenCode Zen, Together, Groq и т.д.
+1. Откройте **Настройки → Custom AI**.
+2. Заполните: имя провайдера (для лога), **Base URL** (до `/chat/completions`, обычно оканчивается на `/v1`), API-ключ (если нужен), ID модели, схему авторизации (`bearer`/`x-api-key`/`api-key`/`none`) и при необходимости доп. заголовки в JSON.
+3. В главном окне выберите **Нейросеть (ИИ) → Custom (OpenAI-совместимый)**.
+
+### Глоссарий (`glossary.md`)
+В режиме ИИ программа подгружает таблицы вида `| Оригинал | Перевод | Примечание |` из `glossary.md` и принудительно подставляет нужные термины в промпт. Если включить «Разрешить ИИ дописывать новые термины», модель сможет предложить новые пары, и они допишутся в управляемую секцию `## Авто-добавлено ИИ` между маркерами `<!-- AUTO_GLOSSARY_START -->` / `<!-- AUTO_GLOSSARY_END -->`. Ручной контент глоссария при этом не трогается.
 
 * **Нагрузка на GPU (0):** Только процессор (Медленно).
 * **Нагрузка на GPU (99):** Модель полностью в видеопамяти (VRAM). Максимальная скорость.

@@ -1,7 +1,7 @@
 import configparser
 import os
 
-from mineai.constants import SETTINGS_FILE
+from mineai.constants import GLOSSARY_FILE, SETTINGS_FILE
 
 
 class ConfigManager:
@@ -29,6 +29,20 @@ class ConfigManager:
             "model": "google/gemma-2-9b-it:free",
             "site_url": "",
             "app_name": "MineAI Translator",
+        },
+        "CUSTOM_AI": {
+            "name": "My provider",
+            "base_url": "http://localhost:8080/v1",
+            "api_key": "",
+            "model": "",
+            "auth_scheme": "bearer",
+            "extra_headers": "",
+        },
+        "GLOSSARY": {
+            "enabled": "True",
+            "auto_append": "True",
+            "path": GLOSSARY_FILE,
+            "max_terms_per_batch": "60",
         },
     }
 
@@ -66,7 +80,10 @@ class ConfigManager:
 
     def getint(self, section: str, key: str, fallback: int = 0) -> int:
         raw = self.get(section, key)
-        return int(raw) if raw.isdigit() else fallback
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return fallback
 
 
 # Shared singleton for GUI and jobs

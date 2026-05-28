@@ -4,9 +4,10 @@ from dataclasses import dataclass
 
 from mineai.cache import TranslationCache
 from mineai.config import ConfigManager
-from mineai.constants import CACHE_FILE_AI, CACHE_FILE_STD, LANGUAGES
+from mineai.constants import CACHE_FILE_AI, CACHE_FILE_STD, GLOSSARY_FILE, LANGUAGES
 from mineai.engines.base import EngineCallbacks
-from mineai.engines.service import TranslationService
+from mineai.engines.service import GlossaryAdapter, TranslationService
+from mineai.glossary import Glossary, load_glossary
 from mineai.output.pack_writer import PackWriter
 from mineai.processors.analyzer import ModpackAnalyzer
 from mineai.processors.discovery import discover_jar_files, discover_loose_lang_files, discover_snbt_files
@@ -108,6 +109,13 @@ class TranslationJob:
                 if not self.config.get("OPENROUTER", "model").strip():
                     self.on_log("❌ Укажите ID модели OpenRouter в настройках!", "red")
                     return
+            elif options.ai_provider == "custom":
+                if not self.config.get("CUSTOM_AI", "base_url").strip():
+                    self.on_log("❌ Укажите Base URL в настройках Custom AI!", "red")
+                    return
+                if not self.config.get("CUSTOM_AI", "model").strip():
+                    self.on_log("❌ Укажите ID модели в настройках Custom AI!", "red")
+                    return
             elif not self.config.get("AI", "model_path").strip():
                 self.on_log("❌ Выберите модель .gguf в настройках!", "red")
                 return
@@ -145,6 +153,13 @@ class TranslationJob:
         elif options.engine == "ai" and options.ai_provider == "openrouter":
             model = self.config.get("OPENROUTER", "model")
             self.on_log(f"🌐 OpenRouter: {model}", "cyan")
+        elif options.engine == "ai" and options.ai_provider == "custom":
+            name = self.config.get("CUSTOM_AI", "name") or "Custom"
+            base_url = self.config.get("CUSTOM_AI", "base_url")
+            model = self.config.get("CUSTOM_AI", "model")
+            self.on_log(f"🌐 {name}: {model} @ {base_url}", "cyan")
+
+        glossary_adapter = self._build_glossary_adapter(options)
 
         pack_writer: PackWriter | None = None
         if options.output_mode == "resourcepack":
@@ -164,6 +179,7 @@ class TranslationJob:
             google_mode=options.google_mode,
             ai_mode=options.ai_mode,
             ai_provider=options.ai_provider,
+            glossary_adapter=glossary_adapter,
         )
         callbacks = self._callbacks()
         jar_proc = JarProcessor(service, self.state, callbacks)
@@ -232,6 +248,13 @@ class TranslationJob:
         finally:
             if pack_writer:
                 pack_writer.close()
+            if glossary_adapter and glossary_adapter.allow_additions:
+                written = glossary_adapter._glossary.flush() if glossary_adapter._glossary else 0
+                if written:
+                    self.on_log(
+                        f"📖 Глоссарий: записано {written} новых термина(ов) в файл.",
+                        "magenta",
+                    )
             if options.engine == "ai":
                 pass  # keep AI running for user
 
@@ -247,3 +270,28 @@ class TranslationJob:
     def stop(self) -> None:
         self.state.stop()
         self.ai_launcher.terminate()
+
+    def _build_glossary_adapter(self, options: TranslationOptions) -> GlossaryAdapter | None:
+        """Загружает глоссарий и оборачивает его в адаптер для движков ИИ."""
+        if options.engine != "ai":
+            return None
+        if not self.config.getboolean("GLOSSARY", "enabled"):
+            return None
+        path = self.config.get("GLOSSARY", "path") or GLOSSARY_FILE
+        glossary: Glossary | None = load_glossary(path)
+        if glossary is not None and len(glossary) == 0 and not options.translate_quests \
+                and not options.translate_books and not options.translate_mods:
+            # на всякий случай — пустой адаптер не нужен
+            glossary = None
+        if glossary is None:
+            return None
+        if len(glossary) == 0:
+            self.on_log(f"📖 Глоссарий пуст: {path}", "dim")
+        else:
+            self.on_log(f"📖 Глоссарий: загружено {len(glossary)} терминов из {path}", "cyan")
+        return GlossaryAdapter(
+            glossary,
+            enabled=True,
+            allow_additions=self.config.getboolean("GLOSSARY", "auto_append"),
+            max_terms=self.config.getint("GLOSSARY", "max_terms_per_batch", 60),
+        )

@@ -2,6 +2,7 @@ SETTINGS_FILE = "settings.ini"
 CACHE_FILE_STD = "cache.json"
 CACHE_FILE_AI = "ai_cache.json"
 DICT_FILE = "dictionary.json"
+GLOSSARY_FILE = "glossary.md"
 KOBOLD_API = "http://localhost:5001/v1/chat/completions"
 KOBOLD_MODELS_URL = "http://localhost:5001/v1/models"
 OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions"
@@ -10,7 +11,10 @@ DEFAULT_OPENROUTER_MODEL = "google/gemma-2-9b-it:free"
 AI_PROVIDERS = {
     "local": "Локально (KoboldCPP)",
     "openrouter": "OpenRouter (облако)",
+    "custom": "Custom (OpenAI-совместимый)",
 }
+
+CUSTOM_AUTH_SCHEMES = ("bearer", "x-api-key", "api-key", "none")
 
 KEYS_TO_TRANSLATE = frozenset({
     "name", "title", "text", "description", "subtitle", "label", "hover_text", "link_text",
