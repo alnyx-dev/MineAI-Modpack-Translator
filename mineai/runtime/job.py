@@ -14,6 +14,7 @@ from mineai.processors.discovery import discover_jar_files, discover_loose_lang_
 from mineai.processors.estimator import StringEstimator
 from mineai.processors.jar import JarProcessor
 from mineai.processors.loose_json import LooseJsonProcessor
+from mineai.processors.prefetch import PendingCollector
 from mineai.processors.snbt import SnbtProcessor
 from mineai.runtime.ai_launcher import AiLauncher
 from mineai.runtime.state import JobState
@@ -190,6 +191,9 @@ class TranslationJob:
         self.state.translated_strings = 0
         self.on_log(f"🚀 ЗАПУСК ПЕРЕВОДА ({lang['name']})...\n", "yellow")
 
+        if options.engine == "ai":
+            self._prefetch_translations(jars, loose, snbt, lang, options, service, callbacks)
+
         total_items = len(jars) + len(loose) + len(snbt)
         done = 0
 
@@ -266,6 +270,36 @@ class TranslationJob:
             if options.output_mode == "resourcepack":
                 self.on_log("💡 Включите ресурспак и датапак в игре.", "yellow")
             self.on_status("Все задачи выполнены!", 1.0)
+
+    def _prefetch_translations(self, jars, loose, snbt, lang, options, service, callbacks) -> None:
+        """Translate every pending string across mods in combined batches first.
+
+        Mods with only a handful of strings no longer trigger their own tiny
+        request — strings from many mods are merged into batches of
+        ``service.batch_size`` and stored in the cache, so the per-mod pass
+        below resolves entirely from the cache.
+        """
+        if not self.state.should_run():
+            return
+        self.on_status("Умная упаковка: сбор строк...", None)
+        texts = PendingCollector(self.state).collect(
+            jars,
+            loose,
+            snbt,
+            target_lang=lang,
+            mode=options.process_mode,
+            translate_mods=options.translate_mods,
+            translate_books=options.translate_books,
+            translate_quests=options.translate_quests,
+        )
+        if not texts or not self.state.should_run():
+            return
+        self.on_log(
+            f"🧠 Умная упаковка: {len(texts)} уникальных строк, пакеты по {service.batch_size}",
+            "cyan",
+        )
+        pending = {str(i): text for i, text in enumerate(texts)}
+        service.translate_dict(pending, lang, callbacks, context="сборка модов Minecraft")
 
     def stop(self) -> None:
         self.state.stop()

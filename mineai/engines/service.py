@@ -59,6 +59,7 @@ class TranslationService:
         self.ai_mode = ai_mode
         self.ai_provider = ai_provider
         self.glossary = glossary_adapter
+        self.batch_size = config.getint("GENERAL", "batch_size", 40)
 
     def _build_engine(self, context: str = "") -> TranslationEngine:
         if self.engine_name == "google":
@@ -77,6 +78,7 @@ class TranslationService:
                 site_url=self.config.get("OPENROUTER", "site_url"),
                 app_name=self.config.get("OPENROUTER", "app_name"),
                 glossary=self.glossary,
+                batch_size=self.batch_size,
             )
         if self.ai_provider == "custom":
             return CustomLlmEngine(
@@ -89,8 +91,14 @@ class TranslationService:
                 mode=self.ai_mode,
                 context=context,
                 glossary=self.glossary,
+                batch_size=self.batch_size,
             )
-        return KoboldEngine(mode=self.ai_mode, context=context, glossary=self.glossary)
+        return KoboldEngine(
+            mode=self.ai_mode,
+            context=context,
+            glossary=self.glossary,
+            batch_size=self.batch_size,
+        )
 
     def translate_dict(
         self,

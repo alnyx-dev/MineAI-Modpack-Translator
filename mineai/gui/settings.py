@@ -241,6 +241,28 @@ class SettingsWindow(ctk.CTkToplevel):
         self.slider_thr.set(workers)
         self.slider_thr.pack(fill="x", padx=10, pady=5)
 
+        batch = self.config.getint("GENERAL", "batch_size", 40)
+        self.lbl_batch = ctk.CTkLabel(
+            tab, text=f"Строк в пакете ИИ: {batch}", font=("", 12, "bold")
+        )
+        self.lbl_batch.pack(anchor="w", padx=10, pady=(10, 0))
+        ctk.CTkLabel(
+            tab,
+            text="Строки из разных модов объединяются в один запрос до этого лимита.",
+            font=("", 10),
+            text_color="gray",
+            justify="left",
+        ).pack(anchor="w", padx=10)
+        self.slider_batch = ctk.CTkSlider(
+            tab,
+            from_=5,
+            to=100,
+            number_of_steps=19,
+            command=lambda v: self.lbl_batch.configure(text=f"Строк в пакете ИИ: {int(v)}"),
+        )
+        self.slider_batch.set(batch)
+        self.slider_batch.pack(fill="x", padx=10, pady=5)
+
         ctk.CTkLabel(tab, text="API ключ DeepL:", font=("", 12, "bold")).pack(
             anchor="w", pady=(10, 0), padx=10
         )
@@ -283,6 +305,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.config.set("GLOSSARY", "path", self.ent_gl_path.get().strip())
         self.config.set("GLOSSARY", "max_terms_per_batch", int(self.slider_gl_max.get()))
         self.config.set("GENERAL", "smart_glue", self.var_smart.get())
+        self.config.set("GENERAL", "batch_size", int(self.slider_batch.get()))
         self.config.set("GENERAL", "google_workers", int(self.slider_thr.get()))
         self.config.set("API", "deepl_key", self.ent_deepl.get())
         self.on_saved()

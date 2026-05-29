@@ -14,6 +14,7 @@ class ConfigManager:
             "color": "blue",
             "smart_glue": "True",
             "google_workers": "5",
+            "batch_size": "40",
         },
         "AI": {
             "exe_path": "koboldcpp.exe",

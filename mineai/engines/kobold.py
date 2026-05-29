@@ -11,6 +11,7 @@ class KoboldEngine(BatchLlmEngine):
         context: str = "",
         *,
         glossary=None,
+        batch_size: int | None = None,
     ) -> None:
         super().__init__(
             mode=mode,
@@ -18,6 +19,7 @@ class KoboldEngine(BatchLlmEngine):
             call_api=self._request,
             label="KoboldCPP",
             glossary=glossary,
+            batch_size=batch_size,
         )
 
     def _request(self, prompt: str, max_tokens: int) -> str | None:
