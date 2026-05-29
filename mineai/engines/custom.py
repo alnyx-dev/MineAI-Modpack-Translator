@@ -29,6 +29,7 @@ class CustomLlmEngine(BatchLlmEngine):
         mode: str = "safe",
         context: str = "",
         glossary: dict[str, str] | None = None,
+        batch_size: int | None = None,
     ) -> None:
         self.base_url = (base_url or "").strip()
         self.api_key = (api_key or "").strip()
@@ -42,6 +43,7 @@ class CustomLlmEngine(BatchLlmEngine):
             call_api=self._request,
             label=self.provider_name or "Custom",
             glossary=glossary,
+            batch_size=batch_size,
         )
 
     @staticmethod

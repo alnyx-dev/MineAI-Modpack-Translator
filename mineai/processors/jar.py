@@ -9,13 +9,15 @@ from mineai.engines.base import EngineCallbacks
 from mineai.engines.service import TranslationService
 from mineai.json_utils import (
     apply_translations_by_path,
-    iter_translatable_strings,
     load_lenient_json,
-    path_to_key,
 )
 from mineai.mod_names import get_mod_name
 from mineai.output.pack_writer import PackWriter
-from mineai.processors.locale_keys import collect_lang_keys_to_translate, count_translatable_lang_entries
+from mineai.processors.locale_keys import (
+    collect_book_json_pending,
+    collect_lang_keys_to_translate,
+    count_translatable_lang_entries,
+)
 from mineai.runtime.state import JobState
 from mineai.text_processing import (
     already_translated,
@@ -207,22 +209,7 @@ class JarProcessor:
             except (json.JSONDecodeError, OSError):
                 pass
 
-        en_map = {path_to_key(p): s for p, s in iter_translatable_strings(en_data) if s.strip()}
-        tr_map = {path_to_key(p): s for p, s in iter_translatable_strings(tr_data)} if tr_data else {}
-
-        pending: dict[str, str] = {}
-        for path_key, source in en_map.items():
-            if is_technical_term(source):
-                continue
-            if not looks_like_source_language(source):
-                continue
-            existing = tr_map.get(path_key, "")
-            if mode == "append" and existing.strip() and existing != source:
-                continue
-            if mode == "append" and existing.strip() == source:
-                pending[path_key] = source
-            else:
-                pending[path_key] = source
+        pending, en_map = collect_book_json_pending(en_data, tr_data, mode)
 
         if not en_map:
             return False

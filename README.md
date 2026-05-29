@@ -37,6 +37,7 @@ You don't need to install Python or mess with code! You can download the ready-t
 * 🧠 **Local AI Support:** Integration with KoboldCPP for translating text while preserving game lore and context.
 * ☁️ **Cloud AI via OpenRouter:** Connect elite neural networks (like Qwen, Claude, or GPT) in one click without using your video card.
 * 🔌 **Any OpenAI-compatible Provider:** Plug in literally any chat-completions endpoint — `localhost:8080`, OpenCode Zen, Ollama (`/v1`), LM Studio, llama.cpp server, vLLM, Together, Groq — by entering Base URL, API key, model and (optional) extra headers.
+* 🧩 **Smart Batching (cross-mod):** Instead of firing a tiny request for every small mod, the AI collects untranslated strings from *all* mods first and merges them into batches of a configurable size (default **40**, set in **Настройки → Общие и API → Строк в пакете ИИ**). A mod with only 5 lines no longer wastes a whole request — its lines ride along with the next mods up to the limit.
 * 📖 **Glossary-aware AI:** The AI reads `glossary.md` (markdown tables) and is forced to use the canonical translations. Optionally it can suggest new terms, which are auto-appended to a managed `## Авто-добавлено ИИ` section between markers, so the human-curated part of the file stays untouched.
 * ⚡ **High Speed:** When using Google Translate, the program sends requests in batches using multi-threading, translating thousands of lines in minutes.
 * 📦 **Safe Packaging:** The program generates a ready-to-use `Resource Pack` or `Data Pack` without damaging your original `.jar` mod files.

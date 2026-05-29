@@ -95,14 +95,18 @@ class BatchLlmEngine(TranslationEngine):
         call_api: Callable[[str, int], str | None],
         label: str = "ИИ",
         glossary: "GlossaryAdapter | None" = None,
+        batch_size: int | None = None,
     ) -> None:
         self.mode = mode
         self.context = context
         self._call_api = call_api
         self.label = label
         self.glossary = glossary
-        self.batch_size = 40 if mode == "context" else 20
+        default_batch = 40 if mode == "context" else 20
+        self.batch_size = max(1, batch_size) if batch_size else default_batch
         self.max_tokens = 4096 if mode == "context" else 2048
+        if self.batch_size > default_batch:
+            self.max_tokens = max(self.max_tokens, self.batch_size * 80)
 
     def translate_batch(
         self,
