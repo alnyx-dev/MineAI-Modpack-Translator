@@ -191,8 +191,12 @@ class TranslationJob:
         self.state.translated_strings = 0
         self.on_log(f"🚀 ЗАПУСК ПЕРЕВОДА ({lang['name']})...\n", "yellow")
 
+        apply_base, apply_span = 0.0, 1.0
         if options.engine == "ai":
-            self._prefetch_translations(jars, loose, snbt, lang, options, service, callbacks)
+            if self._prefetch_translations(jars, loose, snbt, lang, options, service, callbacks):
+                # перевод уже выполнен в фазе упаковки (0..90%),
+                # последние 10% оставляем на сборку файлов
+                apply_base, apply_span = 0.9, 0.1
 
         total_items = len(jars) + len(loose) + len(snbt)
         done = 0
@@ -213,8 +217,8 @@ class TranslationJob:
                 )
                 done += 1
                 self.on_status(
-                    f"Модов: {done}/{len(jars)} | ETA: {self.state.eta_text()}",
-                    done / max(total_items, 1),
+                    f"Сборка: моды {done}/{len(jars)} | ETA: {self.state.eta_text()}",
+                    apply_base + apply_span * (done / max(total_items, 1)),
                 )
 
             for path in loose:
@@ -231,8 +235,8 @@ class TranslationJob:
                 )
                 done += 1
                 self.on_status(
-                    f"Словарей: {done}/{total_items} | ETA: {self.state.eta_text()}",
-                    done / max(total_items, 1),
+                    f"Сборка: словари {done}/{total_items} | ETA: {self.state.eta_text()}",
+                    apply_base + apply_span * (done / max(total_items, 1)),
                 )
 
             for path in snbt:
@@ -242,8 +246,8 @@ class TranslationJob:
                 snbt_proc.process(path, target_lang=lang, mode=options.process_mode)
                 done += 1
                 self.on_status(
-                    f"Квестов: {done}/{total_items} | ETA: {self.state.eta_text()}",
-                    done / max(total_items, 1),
+                    f"Сборка: квесты {done}/{total_items} | ETA: {self.state.eta_text()}",
+                    apply_base + apply_span * (done / max(total_items, 1)),
                 )
 
             cache.save()
@@ -271,17 +275,20 @@ class TranslationJob:
                 self.on_log("💡 Включите ресурспак и датапак в игре.", "yellow")
             self.on_status("Все задачи выполнены!", 1.0)
 
-    def _prefetch_translations(self, jars, loose, snbt, lang, options, service, callbacks) -> None:
+    def _prefetch_translations(self, jars, loose, snbt, lang, options, service, callbacks) -> bool:
         """Translate every pending string across mods in combined batches first.
 
         Mods with only a handful of strings no longer trigger their own tiny
         request — strings from many mods are merged into batches of
         ``service.batch_size`` and stored in the cache, so the per-mod pass
-        below resolves entirely from the cache.
+        below resolves entirely from the cache. Progress, the running counter
+        and ETA are reported here, since this is where the actual translation
+        work happens. Returns ``True`` if any strings were translated.
         """
         if not self.state.should_run():
-            return
-        self.on_status("Умная упаковка: сбор строк...", None)
+            return False
+        self.on_status("🧠 Умная упаковка: сбор строк со всех модов...", None)
+        self.on_log("🧠 Умная упаковка: собираю строки со всех модов...", "yellow")
         texts = PendingCollector(self.state).collect(
             jars,
             loose,
@@ -293,13 +300,32 @@ class TranslationJob:
             translate_quests=options.translate_quests,
         )
         if not texts or not self.state.should_run():
-            return
+            return False
+
+        total = len(texts)
+        batch = max(1, service.batch_size)
+        self.state.total_strings = total
+        self.state.translated_strings = 0
         self.on_log(
-            f"🧠 Умная упаковка: {len(texts)} уникальных строк, пакеты по {service.batch_size}",
+            f"🧠 Умная упаковка: {total} уникальных строк, пакеты по {batch}",
             "cyan",
         )
-        pending = {str(i): text for i, text in enumerate(texts)}
-        service.translate_dict(pending, lang, callbacks, context="сборка модов Minecraft")
+
+        done = 0
+        for i in range(0, total, batch):
+            if not self.state.should_run():
+                break
+            self.state.wait_if_paused()
+            chunk = texts[i:i + batch]
+            pending = {str(j): text for j, text in enumerate(chunk)}
+            service.translate_dict(pending, lang, callbacks, context="сборка модов Minecraft")
+            done += len(chunk)
+            self.state.translated_strings = done
+            self.on_status(
+                f"🧠 Перевод: {done}/{total} строк | ETA: {self.state.eta_text()}",
+                0.9 * done / total,
+            )
+        return True
 
     def stop(self) -> None:
         self.state.stop()
