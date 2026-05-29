@@ -251,6 +251,12 @@ class TranslationJob:
                 )
 
             cache.save()
+            if service.untranslated_count:
+                self.on_log(
+                    f"⚠️ Не удалось локализировать {service.untranslated_count} строк. "
+                    "Они не сохранены в кэш и будут повторены при следующем запуске.",
+                    "yellow",
+                )
         except Exception:
             self.on_log(f"\n❌ КРИТИЧЕСКАЯ ОШИБКА:\n{traceback.format_exc()}", "red")
         finally:

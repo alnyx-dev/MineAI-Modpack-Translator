@@ -54,6 +54,13 @@ class TranslationCache:
             self._data[key] = translated
             self._dirty = True
 
+    def delete(self, api_code: str, source_text: str) -> None:
+        key = self.make_key(api_code, source_text)
+        with self._lock:
+            if key in self._data:
+                del self._data[key]
+                self._dirty = True
+
     def __len__(self) -> int:
         with self._lock:
             return len(self._data)

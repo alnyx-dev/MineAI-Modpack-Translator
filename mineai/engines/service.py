@@ -8,7 +8,7 @@ from mineai.constants import DEFAULT_OPENROUTER_MODEL
 from mineai.engines.kobold import KoboldEngine
 from mineai.engines.openrouter import OpenRouterEngine
 from mineai.glossary import Glossary
-from mineai.text_processing import apply_smart_glue, mask_protected_fragments
+from mineai.text_processing import apply_smart_glue, is_probably_untranslated, mask_protected_fragments
 
 
 class GlossaryAdapter:
@@ -60,6 +60,7 @@ class TranslationService:
         self.ai_provider = ai_provider
         self.glossary = glossary_adapter
         self.batch_size = config.getint("GENERAL", "batch_size", 40)
+        self.untranslated_count = 0
 
     def _build_engine(self, context: str = "") -> TranslationEngine:
         if self.engine_name == "google":
@@ -125,9 +126,16 @@ class TranslationService:
 
             hit = self.cache.get(target_lang["api"], text)
             if hit is not None:
-                result[key] = hit
-                cached_count += 1
-                continue
+                if is_probably_untranslated(text, hit, target_lang):
+                    self.cache.delete(target_lang["api"], text)
+                    callbacks.on_log(
+                        f"⚠️ Кэш устарел: строка без локализации будет переведена заново — {text[:40]}",
+                        "yellow",
+                    )
+                else:
+                    result[key] = hit
+                    cached_count += 1
+                    continue
 
             masked, mapping = mask_protected_fragments(text)
             if not masked:
@@ -147,7 +155,14 @@ class TranslationService:
         for key, text in translated.items():
             original = pending[key].original
             result[key] = text
-            self.cache.set(target_lang["api"], original, text)
+            if is_probably_untranslated(original, text, target_lang):
+                self.untranslated_count += 1
+                callbacks.on_log(
+                    f"⚠️ Пропуск кэша: строка осталась без локализации — {original[:40]}",
+                    "yellow",
+                )
+            else:
+                self.cache.set(target_lang["api"], original, text)
             callbacks.on_log(f" > {original[:40]} -> {text[:40]}", "dim")
 
         for key, item in pending.items():
