@@ -25,6 +25,14 @@ IGNORE_PATTERN = re.compile(
     r"(?<![a-zA-Z])(" + "|".join(re.escape(t) for t in IGNORE_TERMS) + r")(?![a-zA-Z])"
 )
 
+TRANSLATABLE_TERM_WORDS = {
+    "altar", "alternator", "anvil", "armor", "armour", "block", "book", "brick", "bricks",
+    "chamber", "crystal", "crystals", "door", "dungeon", "emitter", "eye", "eyes", "filter",
+    "forge", "fruit", "key", "keys", "machine", "mine", "mines", "mob", "mobs", "oil",
+    "pillar", "realm", "ritual", "rituals", "room", "rune", "runes", "sigil", "soul",
+    "spike", "stone", "stones", "tool", "tools", "trap", "upgrade",
+}
+
 
 def apply_smart_glue(text: str) -> str:
     if not text:
@@ -110,12 +118,32 @@ def has_translatable_source_text(text: str) -> bool:
     return bool(re.search(r"[a-zA-Z]", stripped))
 
 
+def should_validate_ai_translation(text: str) -> bool:
+    masked, _mapping = mask_protected_fragments(text)
+    stripped = re.sub(r"\[\s*#\s*\d+\s*#\s*\]", " ", masked)
+    words = re.findall(r"[A-Za-z][A-Za-z']*", stripped)
+    if not words:
+        return False
+    if len(words) >= 4:
+        return True
+    lowercase_words = [word for word in words if re.search(r"[a-z]", word)]
+    if len(lowercase_words) >= 3:
+        return True
+    if len(lowercase_words) >= 2 and any(
+        word.casefold().strip("'") in TRANSLATABLE_TERM_WORDS for word in lowercase_words
+    ):
+        return True
+    return False
+
+
 def is_probably_untranslated(source_text: str, translated_text: str, target_lang: dict | None = None) -> bool:
     if not isinstance(source_text, str) or not isinstance(translated_text, str):
         return False
     if not source_text.strip() or not translated_text.strip():
         return False
     if not has_translatable_source_text(source_text):
+        return False
+    if not should_validate_ai_translation(source_text):
         return False
     source_norm = re.sub(r"\s+", " ", source_text).strip().casefold()
     translated_norm = re.sub(r"\s+", " ", translated_text).strip().casefold()
