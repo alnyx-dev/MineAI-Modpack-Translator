@@ -104,6 +104,34 @@ def unmask_translation(text: str, mapping: dict[str, str]) -> str:
     return text
 
 
+def has_translatable_source_text(text: str) -> bool:
+    masked, _mapping = mask_protected_fragments(text)
+    stripped = re.sub(r"\[\s*#\s*\d+\s*#\s*\]", " ", masked)
+    return bool(re.search(r"[a-zA-Z]", stripped))
+
+
+def is_probably_untranslated(source_text: str, translated_text: str, target_lang: dict | None = None) -> bool:
+    if not isinstance(source_text, str) or not isinstance(translated_text, str):
+        return False
+    if not source_text.strip() or not translated_text.strip():
+        return False
+    if not has_translatable_source_text(source_text):
+        return False
+    source_norm = re.sub(r"\s+", " ", source_text).strip().casefold()
+    translated_norm = re.sub(r"\s+", " ", translated_text).strip().casefold()
+    if source_norm == translated_norm:
+        return True
+
+    if not target_lang:
+        return False
+    api_code = str(target_lang.get("api", "")).lower()
+    if api_code == "ru":
+        return not re.search(target_lang["regex"], translated_text)
+    if api_code in {"zh-cn", "ja", "ko"}:
+        return not re.search(target_lang["regex"], translated_text)
+    return False
+
+
 @lru_cache(maxsize=10000)
 def is_technical_term(text: str) -> bool:
     if not text:

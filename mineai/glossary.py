@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Iterable
 
+from mineai.text_processing import is_probably_untranslated
+
 AUTO_START = "<!-- AUTO_GLOSSARY_START -->"
 AUTO_END = "<!-- AUTO_GLOSSARY_END -->"
 AUTO_HEADER = "## Авто-добавлено ИИ"
@@ -86,6 +88,8 @@ class Glossary:
                     continue
                 if self.has(src):
                     continue
+                if is_probably_untranslated(src, dst, {"api": "ru", "regex": r"[А-Яа-яЁё]"}):
+                    continue
                 # фильтр мусора: только настоящие термины (без табов/переносов)
                 if "\n" in src or "\n" in dst:
                     continue
@@ -134,6 +138,8 @@ def load_glossary(path: str) -> Glossary:
     for entry in _iter_table_entries(text):
         key_cf = entry.src.casefold()
         if key_cf in glossary._src_index:
+            continue
+        if is_probably_untranslated(entry.src, entry.dst, {"api": "ru", "regex": r"[А-Яа-яЁё]"}):
             continue
         glossary.entries[entry.src] = entry
         glossary._src_index[key_cf] = entry.src
